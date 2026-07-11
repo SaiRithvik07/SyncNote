@@ -1,0 +1,78 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  EDITOR
+  VIEWER
+}
+
+model User {
+  id             String         @id @default(uuid())
+  name           String
+  email          String         @unique
+  passwordHash   String
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  documents      Document[]     @relation("OwnerRelation")
+  collaborations Collaborator[]
+  versions       Version[]      @relation("EditedVersions")
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  title     String   @default("Untitled")
+  content   Json
+
+  ownerId   String
+  owner     User     @relation("OwnerRelation", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  collaborators Collaborator[]
+  versions      Version[]
+
+  @@index([ownerId])
+}
+
+model Collaborator {
+  id         String   @id @default(uuid())
+
+  documentId String
+  userId     String
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role       Role     @default(EDITOR)
+
+  @@unique([documentId, userId])
+
+  @@index([documentId])
+  @@index([userId])
+}
+
+model Version {
+  id          String   @id @default(uuid())
+
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  content     Json
+
+  editedById  String
+  editedBy    User     @relation("EditedVersions", fields: [editedById], references: [id])
+
+  createdAt   DateTime @default(now())
+
+  @@index([documentId])
+  @@index([editedById])
+}
