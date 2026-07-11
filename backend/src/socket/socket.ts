@@ -32,7 +32,20 @@ const activeDocs = new Map<string, Y.Doc>();
 export const initSocket = (httpServer: HttpServer, corsOrigin: string | string[]) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: corsOrigin,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const allowed = Array.isArray(corsOrigin) ? corsOrigin : [corsOrigin];
+        if (allowed.includes('*')) return callback(null, true);
+        const isAllowed = allowed.some((val) => {
+          if (val === origin) return true;
+          return origin.replace(/^https?:\/\//i, '') === val.replace(/^https?:\/\//i, '');
+        });
+        if (isAllowed) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },

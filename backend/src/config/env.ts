@@ -4,6 +4,11 @@ import { z } from 'zod';
 // Load environment variables from .env file
 dotenv.config();
 
+// Fallback to FRONTEND_URL if CORS_ORIGIN is not provided
+if (!process.env.CORS_ORIGIN && process.env.FRONTEND_URL) {
+  process.env.CORS_ORIGIN = process.env.FRONTEND_URL;
+}
+
 const envSchema = z.object({
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid connection URL'),
   JWT_SECRET: z.string().min(8, 'JWT_SECRET must be at least 8 characters long'),
