@@ -67,6 +67,11 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/documents/:documentId/collaborators', collaboratorRoutes);
 app.use('/api/documents/:documentId/versions', versionRoutes);
 
+// Health check (used by Railway / uptime monitors)
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // 404 Route handler
 app.use('*', (req, res, next) => {
   res.status(404).json({
