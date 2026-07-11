@@ -29,7 +29,7 @@ const activePresences = new Map<string, UserPresence>();
 // In-memory store for active Yjs documents
 const activeDocs = new Map<string, Y.Doc>();
 
-export const initSocket = (httpServer: HttpServer, corsOrigin: string) => {
+export const initSocket = (httpServer: HttpServer, corsOrigin: string | string[]) => {
   const io = new Server(httpServer, {
     cors: {
       origin: corsOrigin,

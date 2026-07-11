@@ -8,7 +8,18 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid connection URL'),
   JWT_SECRET: z.string().min(8, 'JWT_SECRET must be at least 8 characters long'),
   PORT: z.coerce.number().default(5000),
-  CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  CORS_ORIGIN: z.string()
+    .default('http://localhost:3000')
+    .transform((val) => {
+      return val.split(',').map((item) => {
+        const origin = item.trim();
+        if (!origin || origin === '*') return origin;
+        if (!/^https?:\/\//i.test(origin)) {
+          return `https://${origin}`;
+        }
+        return origin;
+      });
+    }),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 
