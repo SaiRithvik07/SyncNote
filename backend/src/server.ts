@@ -26,30 +26,7 @@ initSocket(httpServer, env.CORS_ORIGIN);
 app.use(helmet());
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, postman)
-      if (!origin) return callback(null, true);
-      
-      const allowedOrigins = env.CORS_ORIGIN;
-      
-      // Support wildcard
-      if (allowedOrigins.includes('*')) {
-        return callback(null, true);
-      }
-      
-      // Check for exact match or domain name match ignoring protocol
-      const isAllowed = allowedOrigins.some((allowed) => {
-        if (allowed === origin) return true;
-        return origin.replace(/^https?:\/\//i, '') === allowed.replace(/^https?:\/\//i, '');
-      });
-      
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        console.warn(`[CORS] Blocked request from origin: ${origin}. Allowed origins: ${allowedOrigins.join(', ')}`);
-        callback(null, false); // Safe fallback (sends 200/cors fail instead of throwing Express crash)
-      }
-    },
+    origin: true,                  // reflect the request origin — works for all domains with credentials
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
