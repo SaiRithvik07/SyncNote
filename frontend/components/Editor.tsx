@@ -77,6 +77,22 @@ export default function Editor({
           name: currentUser?.name || 'Collaborator',
           color: userColor,
         },
+        render: (user: Record<string, any>) => {
+          const cursor = document.createElement('span');
+          cursor.classList.add('collaboration-cursor__caret');
+          const safeColor = user?.color || userColor || '#6E62E8';
+          const safeName = user?.name || 'Collaborator';
+
+          cursor.setAttribute('style', `border-color: ${safeColor}`);
+
+          const label = document.createElement('div');
+          label.classList.add('collaboration-cursor__label');
+          label.setAttribute('style', `background-color: ${safeColor}`);
+          label.appendChild(document.createTextNode(safeName));
+
+          cursor.appendChild(label);
+          return cursor;
+        },
       }),
     ],
     editable,
