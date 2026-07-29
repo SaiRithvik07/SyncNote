@@ -241,7 +241,9 @@ export default function DocumentPage() {
         console.error('Error applying sync-2 update:', e);
       } finally {
         clearTimeout(syncTimeout);
-        setIsYjsSynced(true);
+        setTimeout(() => {
+          setIsYjsSynced(true);
+        }, 50);
       }
     });
 

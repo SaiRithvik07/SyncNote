@@ -87,11 +87,16 @@ export default function Editor({
   // ── Seed initial content into empty Yjs doc ONLY after Yjs sync completes ───
   useEffect(() => {
     if (!editor || !initialContent || !isSynced || hasSeededRef.current) return;
+    
+    // Mark as seeded immediately so this effect runs at most once
+    hasSeededRef.current = true;
+
     const fragment = ydoc.getXmlFragment('default');
-    if (fragment.length === 0 && editor.isEmpty) {
+    const hasContent = fragment.length > 0 || fragment.toString().trim().length > 0;
+
+    if (!hasContent) {
       editor.commands.setContent(initialContent, { emitUpdate: true });
     }
-    hasSeededRef.current = true;
   }, [editor, initialContent, ydoc, isSynced]);
 
   // ── Sync restored content from version history ──────────────────────────────
