@@ -553,6 +553,7 @@ export default function DocumentPage() {
             editable={isEditable}
             isSynced={isYjsSynced}
             restoredContent={restoredContent}
+            currentUser={currentUser}
           />
         ) : (
           <div className="flex items-center justify-center h-64">

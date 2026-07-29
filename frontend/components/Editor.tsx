@@ -5,6 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Collaboration from '@tiptap/extension-collaboration';
+import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
 import {
@@ -31,6 +32,7 @@ interface EditorProps {
   editable: boolean;
   isSynced?: boolean;
   restoredContent?: string | null;
+  currentUser?: { id: string; name: string; email: string } | null;
 }
 
 export default function Editor({
@@ -42,10 +44,20 @@ export default function Editor({
   editable,
   isSynced = false,
   restoredContent = null,
+  currentUser = null,
 }: EditorProps) {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasSeededRef = useRef(false);
   const prevRestoredContentRef = useRef<string | null>(null);
+
+  const COLLABORATOR_COLORS = ['#6E62E8', '#FF6B57', '#149E90', '#E7A93C', '#EC4899', '#06B6D4'];
+  const userColor = currentUser
+    ? COLLABORATOR_COLORS[
+        Math.abs(
+          currentUser.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+        ) % COLLABORATOR_COLORS.length
+      ]
+    : '#6E62E8';
 
   // ── TipTap editor ──────────────────────────────────────────────────────────
   const editor = useEditor({
@@ -55,12 +67,16 @@ export default function Editor({
         heading: { levels: [1, 2, 3] },
       }),
       Underline,
-      // Collaboration uses @tiptap/y-tiptap internally (not y-prosemirror).
-      // CollaborationCursor@3.0.0 still uses y-prosemirror which conflicts,
-      // so we handle presence display ourselves via awareness below.
       Collaboration.configure({
         document: ydoc,
         field: 'default',
+      }),
+      CollaborationCursor.configure({
+        provider: { awareness },
+        user: {
+          name: currentUser?.name || 'Collaborator',
+          color: userColor,
+        },
       }),
     ],
     editable,
