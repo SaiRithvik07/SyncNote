@@ -52,6 +52,8 @@ export default function DocumentPage() {
   const [documentTitle, setDocumentTitle] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isYjsSynced, setIsYjsSynced] = useState(false);
+  const [restoredContent, setRestoredContent] = useState<string | null>(null);
   
   // Real-time states
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; name: string; email: string }[]>([]);
@@ -211,6 +213,11 @@ export default function DocumentPage() {
       }
     });
 
+    // Fallback timer in case socket connection/sync is delayed or offline
+    const syncTimeout = setTimeout(() => {
+      setIsYjsSynced(true);
+    }, 1500);
+
     // --- YJS Socket Listeners ---
     socket.on('yjs-sync-step-1', ({ stateVector }: { stateVector: string }) => {
       const serverSV = Uint8Array.from(Buffer.from(stateVector, 'base64'));
@@ -232,6 +239,9 @@ export default function DocumentPage() {
         Y.applyUpdate(localYdoc, binaryUpdate, socket);
       } catch (e) {
         console.error('Error applying sync-2 update:', e);
+      } finally {
+        clearTimeout(syncTimeout);
+        setIsYjsSynced(true);
       }
     });
 
@@ -287,8 +297,15 @@ export default function DocumentPage() {
     // Request other active clients awareness states
     socket.emit('awareness-query');
 
+    // Listen for real-time collaborator additions, removals, and role updates
+    socket.on('collaborator-changed', () => {
+      queryClient.invalidateQueries({ queryKey: ['collaborators', documentId] });
+      queryClient.invalidateQueries({ queryKey: ['documents', documentId] });
+    });
+
     // Cleanup on unmount or workspace leaves
     return () => {
+      clearTimeout(syncTimeout);
       localYdoc.off('update', handleYjsUpdate);
       localAwareness.off('update', handleAwarenessUpdate);
 
@@ -300,6 +317,7 @@ export default function DocumentPage() {
         socket.emit('leave-document', documentId);
         socket.off('presence-update');
         socket.off('typing');
+        socket.off('collaborator-changed');
         socket.off('yjs-sync-step-1');
         socket.off('yjs-sync-step-2-reply');
         socket.off('yjs-update');
@@ -376,27 +394,13 @@ export default function DocumentPage() {
   const handleEditorChange = (newHtml: string) => {
     setEditorContent(newHtml);
     localChangeRef.current = true;
-
-    // Broadcast local edits to collaborators instantly
-    if (socketRef.current) {
-      socketRef.current.emit('edit', {
-        documentId,
-        content: newHtml,
-      });
-    }
   };
 
   // Handler when restoring version from history modal
-  const handleRestoreVersion = (restoredContent: string) => {
-    setEditorContent(restoredContent);
-    // Broadcast restore event instantly to online collaborators
-    if (socketRef.current) {
-      socketRef.current.emit('edit', {
-        documentId,
-        content: restoredContent,
-      });
-    }
-    toast.success('Document updated and broadcast to all users');
+  const handleRestoreVersion = (newContent: string) => {
+    setEditorContent(newContent);
+    setRestoredContent(newContent);
+    toast.success('Document restored and synced with all collaborators');
   };
 
   const handleSaveTitle = () => {
@@ -547,6 +551,8 @@ export default function DocumentPage() {
             onChange={handleEditorChange}
             onTyping={handleTypingStatus}
             editable={isEditable}
+            isSynced={isYjsSynced}
+            restoredContent={restoredContent}
           />
         ) : (
           <div className="flex items-center justify-center h-64">

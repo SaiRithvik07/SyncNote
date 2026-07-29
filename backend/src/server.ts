@@ -20,13 +20,14 @@ const app = express();
 const httpServer = createServer(app);
 
 // Initialize WebSockets
-initSocket(httpServer, env.CORS_ORIGIN);
+const io = initSocket(httpServer, env.CORS_ORIGIN);
+app.set('io', io);
 
 // Global Middlewares
 app.use(helmet());
 app.use(
   cors({
-    origin: true,                  // reflect the request origin — works for all domains with credentials
+    origin: true,                
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -80,7 +81,7 @@ app.use('*', (req, res, next) => {
   });
 });
 
-// Global Error Handler Middleware (Must be registered last)
+// Global Error Handler Middleware 
 app.use(errorHandler);
 
 // Start server

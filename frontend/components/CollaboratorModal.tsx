@@ -39,8 +39,25 @@ export default function CollaboratorModal({ documentId, documentRole, onClose }:
   // Add collaborator mutation
   const addMutation = useMutation({
     mutationFn: (body: { email: string; role: DocumentRole }) =>
-      api.post(`/documents/${documentId}/collaborators`, body),
-    onSuccess: () => {
+      api.post<{ collaborator: Collaborator }>(`/documents/${documentId}/collaborators`, body),
+    onSuccess: (res) => {
+      if (res?.collaborator) {
+        queryClient.setQueryData<{ collaborators: Collaborator[] }>(
+          ['collaborators', documentId],
+          (old) => {
+            if (!old) return { collaborators: [res.collaborator] };
+            const exists = old.collaborators.some((c) => c.userId === res.collaborator.userId);
+            if (exists) {
+              return {
+                collaborators: old.collaborators.map((c) =>
+                  c.userId === res.collaborator.userId ? res.collaborator : c
+                ),
+              };
+            }
+            return { collaborators: [...old.collaborators, res.collaborator] };
+          }
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['collaborators', documentId] });
       toast.success('Collaborator added!');
       setEmail('');
@@ -53,8 +70,21 @@ export default function CollaboratorModal({ documentId, documentRole, onClose }:
   // Update role mutation
   const updateMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: DocumentRole }) =>
-      api.patch(`/documents/${documentId}/collaborators/${userId}`, { role }),
-    onSuccess: () => {
+      api.patch<{ collaborator: Collaborator }>(`/documents/${documentId}/collaborators/${userId}`, { role }),
+    onSuccess: (res) => {
+      if (res?.collaborator) {
+        queryClient.setQueryData<{ collaborators: Collaborator[] }>(
+          ['collaborators', documentId],
+          (old) => {
+            if (!old) return { collaborators: [] };
+            return {
+              collaborators: old.collaborators.map((c) =>
+                c.userId === res.collaborator.userId ? res.collaborator : c
+              ),
+            };
+          }
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['collaborators', documentId] });
       toast.success('Role updated successfully');
     },
@@ -66,7 +96,16 @@ export default function CollaboratorModal({ documentId, documentRole, onClose }:
   // Remove collaborator mutation
   const removeMutation = useMutation({
     mutationFn: (userId: string) => api.delete(`/documents/${documentId}/collaborators/${userId}`),
-    onSuccess: () => {
+    onSuccess: (_, userId) => {
+      queryClient.setQueryData<{ collaborators: Collaborator[] }>(
+        ['collaborators', documentId],
+        (old) => {
+          if (!old) return { collaborators: [] };
+          return {
+            collaborators: old.collaborators.filter((c) => c.userId !== userId),
+          };
+        }
+      );
       queryClient.invalidateQueries({ queryKey: ['collaborators', documentId] });
       toast.success('Collaborator removed');
     },

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
+import { getSocket, disconnectSocket } from '@/lib/socket';
 
 interface Document {
   id: string;
@@ -50,7 +51,22 @@ export default function DashboardPage() {
     const userStr = localStorage.getItem('syncnote_user');
     if (!token || !userStr) { router.push('/login'); return; }
     setCurrentUser(JSON.parse(userStr));
-  }, [router]);
+
+    const socket = getSocket(token);
+    socket.connect();
+
+    const handleDocShared = () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+    };
+
+    socket.on('document-shared', handleDocShared);
+    socket.on('document-unshared', handleDocShared);
+
+    return () => {
+      socket.off('document-shared', handleDocShared);
+      socket.off('document-unshared', handleDocShared);
+    };
+  }, [router, queryClient]);
 
   const { data, isLoading } = useQuery<FetchDocumentsResponse>({
     queryKey: ['documents'],

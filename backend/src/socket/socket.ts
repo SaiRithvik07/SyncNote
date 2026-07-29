@@ -63,6 +63,7 @@ export const initSocket = (httpServer: HttpServer, corsOrigin: string | string[]
   io.on('connection', (socket: AuthenticatedSocket) => {
     const user = socket.user!;
     console.log(`🔌 User connected to socket: ${user.name} (${user.email}) - SocketID: ${socket.id}`);
+    socket.join(`user:${user.id}`);
 
     // Helper to get all users in a specific document room
     const getRoomUsers = (documentId: string) => {
@@ -143,8 +144,14 @@ export const initSocket = (httpServer: HttpServer, corsOrigin: string | string[]
       checkRoomCleanup(documentId);
     });
 
+    const getSocketDocumentId = () => {
+      const presence = activePresences.get(socket.id);
+      if (presence?.documentId) return presence.documentId;
+      return Array.from(socket.rooms).find(r => r !== socket.id && !r.startsWith('user:'));
+    };
+
     socket.on('yjs-sync-step-2', ({ stateVector }: { stateVector: string }) => {
-      const documentId = Array.from(socket.rooms).find(r => r !== socket.id);
+      const documentId = getSocketDocumentId();
       if (!documentId) return;
 
       const ydoc = activeDocs.get(documentId);
@@ -159,7 +166,7 @@ export const initSocket = (httpServer: HttpServer, corsOrigin: string | string[]
     });
 
     socket.on('yjs-update', ({ update }: { update: string }) => {
-      const documentId = Array.from(socket.rooms).find(r => r !== socket.id);
+      const documentId = getSocketDocumentId();
       if (!documentId) return;
 
       const ydoc = activeDocs.get(documentId);
@@ -175,13 +182,13 @@ export const initSocket = (httpServer: HttpServer, corsOrigin: string | string[]
     });
 
     socket.on('awareness-update', ({ update }: { update: string }) => {
-      const documentId = Array.from(socket.rooms).find(r => r !== socket.id);
+      const documentId = getSocketDocumentId();
       if (!documentId) return;
       socket.to(documentId).emit('awareness-update', { update });
     });
 
     socket.on('awareness-query', () => {
-      const documentId = Array.from(socket.rooms).find(r => r !== socket.id);
+      const documentId = getSocketDocumentId();
       if (!documentId) return;
       socket.to(documentId).emit('awareness-query');
     });

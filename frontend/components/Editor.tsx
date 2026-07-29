@@ -29,10 +29,23 @@ interface EditorProps {
   onChange: (htmlContent: string) => void;
   onTyping: (isTyping: boolean) => void;
   editable: boolean;
+  isSynced?: boolean;
+  restoredContent?: string | null;
 }
 
-export default function Editor({ ydoc, awareness, initialContent, onChange, onTyping, editable }: EditorProps) {
+export default function Editor({
+  ydoc,
+  awareness,
+  initialContent,
+  onChange,
+  onTyping,
+  editable,
+  isSynced = false,
+  restoredContent = null,
+}: EditorProps) {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasSeededRef = useRef(false);
+  const prevRestoredContentRef = useRef<string | null>(null);
 
   // ── TipTap editor ──────────────────────────────────────────────────────────
   const editor = useEditor({
@@ -63,14 +76,23 @@ export default function Editor({ ydoc, awareness, initialContent, onChange, onTy
     },
   });
 
-  // ── Seed initial content into empty Yjs doc ────────────────────────────────
+  // ── Seed initial content into empty Yjs doc ONLY after Yjs sync completes ───
   useEffect(() => {
-    if (!editor || !initialContent) return;
+    if (!editor || !initialContent || !isSynced || hasSeededRef.current) return;
     const fragment = ydoc.getXmlFragment('default');
     if (fragment.length === 0 && editor.isEmpty) {
       editor.commands.setContent(initialContent, { emitUpdate: true });
     }
-  }, [editor, initialContent, ydoc]);
+    hasSeededRef.current = true;
+  }, [editor, initialContent, ydoc, isSynced]);
+
+  // ── Sync restored content from version history ──────────────────────────────
+  useEffect(() => {
+    if (editor && restoredContent && restoredContent !== prevRestoredContentRef.current) {
+      prevRestoredContentRef.current = restoredContent;
+      editor.commands.setContent(restoredContent, { emitUpdate: true });
+    }
+  }, [editor, restoredContent]);
 
   // ── Sync editable ──────────────────────────────────────────────────────────
   useEffect(() => {

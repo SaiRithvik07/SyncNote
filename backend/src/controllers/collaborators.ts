@@ -32,6 +32,12 @@ export class CollaboratorController {
         role
       );
 
+      const io = req.app.get('io');
+      if (io) {
+        io.to(documentId).emit('collaborator-changed', { documentId, collaborator, action: 'add' });
+        io.to(`user:${collaborator.userId}`).emit('document-shared', { documentId });
+      }
+
       res.status(201).json({
         status: 'success',
         data: {
@@ -59,6 +65,12 @@ export class CollaboratorController {
           role
         );
 
+      const io = req.app.get('io');
+      if (io) {
+        io.to(documentId).emit('collaborator-changed', { documentId, collaborator, action: 'update' });
+        io.to(`user:${userId}`).emit('document-shared', { documentId });
+      }
+
       res.status(200).json({
         status: 'success',
         data: {
@@ -82,6 +94,12 @@ export class CollaboratorController {
         documentId,
         userId
       );
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to(documentId).emit('collaborator-changed', { documentId, userId, action: 'remove' });
+        io.to(`user:${userId}`).emit('document-unshared', { documentId });
+      }
 
       res.status(200).json({
         status: 'success',
