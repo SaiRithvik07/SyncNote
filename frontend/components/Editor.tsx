@@ -64,6 +64,7 @@ export default function Editor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
+        history: false,
       }),
       Underline,
       Collaboration.configure({
