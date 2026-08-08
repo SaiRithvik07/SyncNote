@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import * as Y from 'yjs';
 import { env } from '../config/env';
 import { prisma } from '../config/db';
+import { DocumentService } from '../services/documents';
 
 interface SocketUser {
   id: string;
@@ -84,11 +85,24 @@ export const initSocket = (httpServer: HttpServer, corsOrigin: string | string[]
     };
 
     // Helper to clean up active doc if no online users are left
-    const checkRoomCleanup = (documentId: string) => {
+    const checkRoomCleanup = async (documentId: string) => {
       const roomUsers = getRoomUsers(documentId);
       if (roomUsers.length === 0) {
-        activeDocs.delete(documentId);
-        console.log(`🧹 Cleared active Yjs document memory for room ${documentId}`);
+        const ydoc = activeDocs.get(documentId);
+        if (ydoc) {
+          try {
+            const fragment = ydoc.getXmlFragment('default');
+            const content = fragment.toString();
+            if (content) {
+              await DocumentService.updateDocument(documentId, undefined, content);
+              console.log(`💾 Flushed active Yjs document state to PostgreSQL for room ${documentId}`);
+            }
+          } catch (err) {
+            console.error(`Error flushing Yjs document on cleanup for room ${documentId}:`, err);
+          }
+          activeDocs.delete(documentId);
+          console.log(`🧹 Cleared active Yjs document memory for room ${documentId}`);
+        }
       }
     };
 
